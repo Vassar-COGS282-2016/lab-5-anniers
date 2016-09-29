@@ -32,10 +32,27 @@
 # - Return this probability.
 
 sample.training.data <- data.frame(x=c(0.5,0.6), y=c(0.4,0.3), category=c(1,2))
+decay.rate <- 0.5
+sensitivity <- 4
 
 exemplar.memory.limited <- function(training.data, x.val, y.val, target.category, sensitivity, decay.rate){
-  return(NA)
-}
+  training.data$recency <- seq((nrow(sample.training.data)-1):0)
+  training.data$weight <- sapply(sample.training.data$recency, function(recency){1*decay.rate^recency})
+ 
+  training.data$distance <- mapply(function(x,y){
+   return(sqrt((x-x.val)^2 + (y-y.val)^2))
+ }, sample.training.data$x, sample.training.data$y)
+ 
+ training.data$similarity <- exp(-sensitivity * sample.training.data$distance)
+ 
+ training.data$weighted.similarity <- sample.training.data$weight * sample.training.data$similarity
+
+ sum.similarity <- mapply(function(target.category)
+   if (target.category == 1) 
+     sum.category1 <- 0
+   sum.category1 <- sum.category1 + weighted.similarity
+ 
+ }
 
 # Once you have the model implemented, write the log-likelihood function for a set of data.
 # The set of data for the model will look like this:
@@ -56,6 +73,7 @@ sample.data.set[4,]
 # So, you need to treat each row of all.data as a test item, and find the training set for it
 # to give to your model. It may be easier to do this with a for loop than mapply(), though it
 # is certainly possible with both. (For mapply, pass it the row number that you are on...)
+  # at row 8, rows 1-7 are training data. there is no training data on first trial - account for this
 
 # Don't forget that decay rate should be between 0 and 1, and that sensitivity should be > 0.
 
