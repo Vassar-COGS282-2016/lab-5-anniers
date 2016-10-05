@@ -8,7 +8,27 @@ rm(sample.training.data)
 # Note: In optim() you can tell it to display updates as it goes with:
 # optim( ... , control=list(trace=4))
 
-fit <- optim(c(0, 0), exemplar.memory.log.likelihood, method = "Nelder-Mead")
+exemplar.memory.log.likelihood.for.fit <- function(parameters) {
+  sensitivity <- parameters[1]
+    if (sensitivity < 0) {return(NA)}
+  decay.rate <- parameters[2]
+    if(decay.rate < 0) {return(NA)}
+    if(decay.rate > 1) {return(NA)}
+  
+  likelihood <- sapply(1:nrow(all.data), function(x){
+    if(x == 1) {return(0.5)}
+     if(all.data[x, ]$correct == T) 
+    {return(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate))}
+    
+    if(all.data[x, ]$correct == F)
+    {return(1-(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate)))}
+    
+  }) 
+  
+  return(sum(-log(likelihood)))
+}
+
+fit1 <- optim(c(0, 0), exemplar.memory.log.likelihood, method = "Nelder-Mead")
   
 # Now try fitting a restricted version of the model, where we assume there is no decay.
 # Fix the decay.rate parameter to 1, and use optim to fit the sensitivity parameter.
@@ -22,6 +42,14 @@ fit <- optim(exemplar.memory.log.likelihood, upper=100, lower=0, method = "Brent
 # remember this is the negative log likeihood, so multiply by -1.
 
 # What's the AIC and BIC for both models? Which model should we prefer?
+
+# AIC: 2k - 2ln(L)
+# BIC: k * ln(N) - 2ln(L)
+# k = number of free parameters (2 in first model when decay rate isn't fixed, 1 in second model when decay rate is fixed)
+# L = maximum likelihood
+# N = sample size = 500
+# AIC: for model 1: 4 - 2ln(L) for model 2: 2 - 2ln(L)
+# BIC: for model 1: 2ln(500) - 2ln(L) for model 2: ln(500) - 2ln(L)
 
 #### BONUS...
 # If you complete this part I'll refund you a late day. You do not need to do this.
