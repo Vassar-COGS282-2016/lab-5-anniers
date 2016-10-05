@@ -8,11 +8,15 @@ rm(sample.training.data)
 # Note: In optim() you can tell it to display updates as it goes with:
 # optim( ... , control=list(trace=4))
 
+fit <- optim(c(0, 0), exemplar.memory.log.likelihood, method = "Nelder-Mead")
+  
 # Now try fitting a restricted version of the model, where we assume there is no decay.
 # Fix the decay.rate parameter to 1, and use optim to fit the sensitivity parameter.
 # Note that you will need to use method="Brent" in optim() instead of Nelder-Mead. 
 # The brent method also requires an upper and lower boundary:
 # optim( ..., upper=100, lower=0, method="Brent")
+
+fit <- optim(exemplar.memory.log.likelihood, upper=100, lower=0, method = "Brent")
 
 # What's the log likelihood of both models? (see the $value in the result of optiom(),
 # remember this is the negative log likeihood, so multiply by -1.

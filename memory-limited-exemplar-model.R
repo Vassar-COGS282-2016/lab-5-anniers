@@ -32,32 +32,69 @@
 # - Return this probability.
 
 sample.training.data <- data.frame(x=c(0.5,0.6), y=c(0.4,0.3), category=c(1,2))
-decay.rate <- 0.5
-sensitivity <- 4
 
-exemplar.memory.limited <- function(training.data, x.val, y.val, target.category, sensitivity, decay.rate){
-  training.data$recency <- seq((nrow(sample.training.data)-1):0)
-  training.data$weight <- sapply(sample.training.data$recency, function(recency){1*decay.rate^recency})
+
+exemplar.memory.limited <- function(training.data, x.val, y.val, target.category, sensitivity, decay.rate) {
+  if(nrow(training.data) == 0) {return(0.5)}
+  
+  training.data$recency <- seq((nrow(training.data)-1):0)
+  training.data$weight <- sapply(training.data$recency, function(recency){
+    weights <- 1*decay.rate^recency
+    return(weights)})
  
-  training.data$distance <- mapply(function(x,y){
+  td <- training.data
+  td$distance <- mapply(function(x,y){
    return(sqrt((x-x.val)^2 + (y-y.val)^2))
- }, sample.training.data$x, sample.training.data$y)
+ }, td$x, td$y)
  
- training.data$similarity <- exp(-sensitivity * sample.training.data$distance)
+ td$similarity <- exp(-sensitivity * td$distance)
  
- training.data$weighted.similarity <- sample.training.data$weight * sample.training.data$similarity
+ td$weighted.similarity <- td$similarity * training.data$weight
+ 
+ total.sim <- sum(td$weighted.similarity)
+ target.category.subset <- subset(td, category == target.category)$weighted.similarity
+ probability <- ((sum(target.category.subset))/total.sim)
+ if(probability == 0){return(0.0000000000000001)}
+ return(probability)
 
- sum.similarity <- mapply(function(target.category)
-   if (target.category == 1) 
-     sum.category1 <- 0
-   sum.category1 <- sum.category1 + weighted.similarity
- 
- }
+}
 
 # Once you have the model implemented, write the log-likelihood function for a set of data.
 # The set of data for the model will look like this:
 
 sample.data.set <- data.frame(x=c(0.5,0.6,0.4,0.5,0.3), y=c(0.4,0.3,0.6,0.4,0.5), category=c(1,2,2,1,2), correct=c(T,F,F,T,F))
+
+sample.data.set$probability.correct <- mapply(function(x, y, category) {
+  return(exemplar.memory.limited(sample.data.set, x, y, category, 5, 0.5))
+}, sample.data.set$x, sample.data.set$y, sample.data.set$category)
+
+sample.data.set$likelihood <- mapply(function(correct, probability.correct){
+  if(correct == T) {return(probability.correct)}
+  if(correct == F) {return(1 - probability.correct)}
+}, sample.data.set$correct, sample.data.set$probability.correct)
+
+sum(log(sample.data.set$likelihood))
+
+
+log.likelihood <- function(parameters) {
+  sensitivity <- parameters[1]
+    if (sensitivity < 0) {return(NA)}
+  decay.rate <- parameters[2]
+    if (decay.rate < 0) {return(NA)}
+    if (decay.rate > 1) {return(NA)}
+  
+  sample.data.set$probability.correct <- mapply(function(x, y, category) {
+    return(exemplar.memory.limited(sample.data.set, x, y, category, sensitvity, decay.rate))
+  }, sample.data.set$x, sample.data.set$y, sample.data.set$category)
+  
+  sample.data.set$likelihood <- mapply(function(correct, probability.correct){
+    if(correct == T) {return(probability.correct)}
+    if(correct == F) {return(1 - probability.correct)}
+  }, sample.data.set$correct, sample.data.set$probability.correct)
+  
+  sum(log(sample.data.set$likelihood))
+}
+
 
 # In our hypothetical experiment, we are training and testing at the same time. This is important
 # for a model like this, because the model depends on the order in which examples are shown.
@@ -77,6 +114,16 @@ sample.data.set[4,]
 
 # Don't forget that decay rate should be between 0 and 1, and that sensitivity should be > 0.
 
-exemplar.memory.log.likelihood <- function(all.data, sensitivity, decay.rate){
-  return(NA)
+exemplar.memory.log.likelihood <- function(all.data, sensitivity, decay.rate) {
+ 
+  likelihood <- sapply(1:nrow(all.data), function(x){
+    if(all.data[x, ]$correct == T) 
+      {return(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate))}
+          
+  if(all.data[x, ]$correct == F)
+   {return(1-(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate)))}
+
+ }) 
+ 
+ return(sum(-log(likelihood)))
 }
