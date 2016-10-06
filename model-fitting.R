@@ -28,15 +28,37 @@ exemplar.memory.log.likelihood.for.fit <- function(parameters) {
   return(sum(-log(likelihood)))
 }
 
-fit1 <- optim(c(0, 0), exemplar.memory.log.likelihood, method = "Nelder-Mead")
-  
+fit1 <- optim(c(0.5, 0.5), exemplar.memory.log.likelihood.for.fit, method = "Nelder-Mead", control=list(trace=4))
+# sensitivity = 5.154, decay.rate = 0.627
+# log likelihood = -187.5985
+
 # Now try fitting a restricted version of the model, where we assume there is no decay.
 # Fix the decay.rate parameter to 1, and use optim to fit the sensitivity parameter.
 # Note that you will need to use method="Brent" in optim() instead of Nelder-Mead. 
 # The brent method also requires an upper and lower boundary:
 # optim( ..., upper=100, lower=0, method="Brent")
 
-fit <- optim(exemplar.memory.log.likelihood, upper=100, lower=0, method = "Brent")
+exemplar.memory.log.likelihood.brent <- function(parameters) {
+  sensitivity <- parameters[1]
+  if (sensitivity < 0) {return(NA)}
+  decay.rate <- 1
+  
+  likelihood <- sapply(1:nrow(all.data), function(x){
+    if(x == 1) {return(0.5)}
+    if(all.data[x, ]$correct == T) 
+    {return(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate))}
+    
+    if(all.data[x, ]$correct == F)
+    {return(1-(exemplar.memory.limited(all.data[0:(x-1), ], all.data[x, ]$x, all.data[x, ]$y, all.data[x, ]$category, sensitivity, decay.rate)))}
+    
+  }) 
+  
+  return(sum(-log(likelihood)))
+}
+
+fit.brent <- optim(c(0.5), exemplar.memory.log.likelihood.brent, upper=100, lower=0, method = "Brent", control = list(trace=4))
+# sensitivity = 3.86 
+# log likelihood = -248.5161
 
 # What's the log likelihood of both models? (see the $value in the result of optiom(),
 # remember this is the negative log likeihood, so multiply by -1.
@@ -48,8 +70,12 @@ fit <- optim(exemplar.memory.log.likelihood, upper=100, lower=0, method = "Brent
 # k = number of free parameters (2 in first model when decay rate isn't fixed, 1 in second model when decay rate is fixed)
 # L = maximum likelihood
 # N = sample size = 500
-# AIC: for model 1: 4 - 2ln(L) for model 2: 2 - 2ln(L)
-# BIC: for model 1: 2ln(500) - 2ln(L) for model 2: ln(500) - 2ln(L)
+# AIC Model 1: 379.197
+# AIC Model 2: 499.0322
+# BIC Model 1: 387.6262
+# BIC Model 2: 503.2468
+
+# We should prefer model 2.
 
 #### BONUS...
 # If you complete this part I'll refund you a late day. You do not need to do this.

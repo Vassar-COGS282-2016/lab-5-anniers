@@ -37,7 +37,7 @@ sample.training.data <- data.frame(x=c(0.5,0.6), y=c(0.4,0.3), category=c(1,2))
 exemplar.memory.limited <- function(training.data, x.val, y.val, target.category, sensitivity, decay.rate) {
   if(nrow(training.data) == 0) {return(0.5)}
   
-  training.data$recency <- seq((nrow(training.data)-1):0)
+  training.data$recency <- (nrow(training.data)-1):0
   training.data$weight <- sapply(training.data$recency, function(recency){
     weights <- 1*decay.rate^recency
     return(weights)})
@@ -113,6 +113,7 @@ sample.data.set[4,]
   # at row 8, rows 1-7 are training data. there is no training data on first trial - account for this
 
 # Don't forget that decay rate should be between 0 and 1, and that sensitivity should be > 0.
+
 
 exemplar.memory.log.likelihood <- function(all.data, sensitivity, decay.rate) {
  
